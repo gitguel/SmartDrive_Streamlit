@@ -14,25 +14,34 @@ Esta aplicação Streamlit permite visualizar análises t-SNE de dados de teleme
 - ✅ Mapeamento de placas para modelos de veículos
 - ✅ Métricas e estatísticas em tempo real
 
-## 🚀 Como executar
+## 🚀 Instalação e Execução
 
-### 1. Instalar dependências
+Este projeto utiliza **Poetry** para gerenciamento de dependências e ambientes virtuais.
 
-Certifique-se de ter as seguintes bibliotecas instaladas:
+### 1. Clonar o repositório
 
-```bash
-pip install streamlit pandas numpy scikit-learn plotly
-```
-
-### 2. Executar a aplicação
-
-No terminal, navegue até a pasta `src` e execute:
+Abra o terminal e clone o repositório para sua máquina local:
 
 ```bash
-streamlit run streamlit_tsne_app.py
+git clone git@github.com:gitguel/SmartDrive_Streamlit.git
+cd SmartDrive_Streamlit
 ```
 
-### 3. Acessar a aplicação
+### 2. Configurar o ambiente
+
+Certifique-se de ter o [Poetry](https://python-poetry.org/docs/#installation) instalado. Em seguida, instale as dependências do projeto (isso criará o ambiente virtual automaticamente):
+
+```bash
+poetry install
+```
+
+### 3. Executar a aplicação
+
+Para iniciar o servidor do Streamlit utilizando o ambiente configurado, execute:
+
+```bash
+poetry run streamlit run src/streamlit_tsne_app.py
+```
 
 A aplicação será aberta automaticamente no navegador em:
 ```
@@ -115,7 +124,8 @@ Ao passar o mouse sobre qualquer ponto, você verá:
 
 ## 🛠️ Requisitos Técnicos
 
-- Python 3.8+
+- Python 3.10+ (Gerenciado pelo Poetry)
+- Poetry (Gerenciador de pacotes)
 - Streamlit
 - Pandas
 - NumPy
@@ -125,17 +135,19 @@ Ao passar o mouse sobre qualquer ponto, você verá:
 ## 📂 Estrutura de Arquivos Esperada
 
 ```
-smartdrive/
-├── dados/
+SmartDrive_Streamlit/
+├── data/
 │   └── deltas/
-│       ├── delta_1_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-│       ├── delta_2_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-│       ├── delta_3_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-│       ├── delta_ecoforest_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-│       ├── delta_framento_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-│       └── delta_reiter_2025-08-01_00-00-00-03-00_2025-08-31_23-59-59-03-00.txt
-└── src/
-    └── streamlit_tsne_app.py
+│       ├── delta_1_*.txt
+│       └── ...
+│   └── deltas_events/
+│       ├── delta_event_1_*.txt
+│       └── ...
+├── src/
+│   └── streamlit_tsne_app.py
+├── pyproject.toml
+├── poetry.lock
+└── README.md
 ```
 
 ## 💡 Dicas de Uso
@@ -147,9 +159,13 @@ smartdrive/
 
 ## 🐛 Solução de Problemas
 
+### Erro "Module not found"
+- Certifique-se de ter rodado `poetry install` antes de executar.
+- Verifique se está rodando o comando com o prefixo `poetry run ...`.
+
 ### Erro ao carregar arquivo
 - Verifique se o caminho dos dados está correto
-- Certifique-se de que os arquivos existem na pasta `dados/deltas/`
+- Certifique-se de que os arquivos existem na pasta `data/deltas/` (atenção para a mudança de `dados` para `data` se tiver alterado a estrutura).
 
 ### Gráfico não aparece
 - Aguarde o processamento (pode levar alguns minutos)
@@ -158,9 +174,3 @@ smartdrive/
 ### Aplicação lenta
 - Reduza o tamanho da amostra nos parâmetros
 - Use um conjunto de dados menor
-
-## 📝 Notas
-
-- O processamento pode levar alguns minutos dependendo do tamanho dos dados
-- A aplicação filtra automaticamente apenas as top 10 placas
-- Os dados são cacheados para melhor performance
