@@ -30,3 +30,16 @@ build/
 # Arquivos de Dados
 data/*
 !data/.gitkeep
+
+# Ignora caches
+data_cache/
+temp_raw_data/
+__pycache__/
+
+# Ignora JSONs ou TXTs brutos que possam ter sobrado
+*.json
+*.txt
+
+# --- IMPORTANTE: PERMITIR A PASTA PROCESSED ---
+# Se você tiver uma regra ignorando "data/*", adicione a exceção abaixo:
+!data/processed/
