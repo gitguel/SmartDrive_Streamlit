@@ -273,17 +273,30 @@ file_to_operation = {
 # Sidebar para seleção de dados
 st.sidebar.header("⚙️ Configurações")
 
-# Caminho base dos dados
-data_base_path = "/home/carnot.filho/projetos/smartdrive/dados/stream"
+# # Caminho base dos dados
+# data_base_path = "/home/carnot.filho/projetos/smartdrive/dados/stream"
 
-# Opções de arquivos disponíveis
+# # Opções de arquivos disponíveis
+# file_options = {
+#     "Delta 1 (BRF Primaria)": "Delta_Events_BRF_Primaria.txt",
+#     "Delta 2 (BRF Secundaria)": "Delta_Events_BRF_Secundaria.txt",
+#     "Delta 3 (BRF Agro)": "Delta_Events_BRF_Agro.txt",
+#     "Ecoforest": "Delta_Events_Ecoforest.txt",
+#     "Framento": "Delta_Events_Framento.txt",
+#     "Reiter": "Delta_Events_Reiter.txt"
+# }
+
+# Caminho base onde os parquets estão salvos
+DATA_PATH = "data/processed"
+
+# Mapeamento: Nome Exibido -> Nome da Pasta do Dataset
 file_options = {
-    "Delta 1 (BRF Primaria)": "Delta_Events_BRF_Primaria.txt",
-    "Delta 2 (BRF Secundaria)": "Delta_Events_BRF_Secundaria.txt",
-    "Delta 3 (BRF Agro)": "Delta_Events_BRF_Agro.txt",
-    "Ecoforest": "Delta_Events_Ecoforest.txt",
-    "Framento": "Delta_Events_Framento.txt",
-    "Reiter": "Delta_Events_Reiter.txt"
+    "Delta 1 (BRF Primaria)": "delta_1_brf_primaria",
+    "Delta 2 (BRF Secundaria)": "delta_2_brf_secundaria",
+    "Delta 3 (BRF Agro)": "delta_3_brf_agro",
+    "Ecoforest": "ecoforest",
+    "Framento": "framento",
+    "Reiter": "reiter"
 }
 
 selected_dataset = st.sidebar.selectbox(
@@ -363,11 +376,18 @@ with st.sidebar.expander(f"📋 Top 10 Placas - {operation}"):
         st.markdown(f"**{plate}**: {model}")
 
 
-@st.cache_data
-def load_and_process_data(file_path, top_plates, plate_model_map):
-    """Carrega e processa os dados do arquivo selecionado"""
+@st.cache_data(show_spinner=False)
+def load_and_process_data(dataset_folder_name, top_plates, plate_model_map):
+    """Lê os arquivos Parquet locais e processa os dados"""
     try:
-        df_bruto = pd.read_json(file_path, lines=True)
+        # Monta o caminho completo: data/processed/nome_da_pasta
+        folder_path = os.path.join(DATA_PATH, dataset_folder_name)
+        
+        # O Pandas é inteligente: se passarmos uma pasta para read_parquet,
+        # ele lê todos os arquivos (part_0, part_1...) e une automaticamente.
+        df_bruto = pd.read_parquet(folder_path)
+        
+        # --- FILTRAGEM E MAPEAMENTO (Mantido igual) ---
         
         # Filtrar apenas as top 10 placas
         df_filtered = df_bruto[df_bruto['plate'].isin(top_plates)].copy()
@@ -375,13 +395,13 @@ def load_and_process_data(file_path, top_plates, plate_model_map):
         # Adicionar coluna de modelo
         df_filtered['vehicle_model'] = df_filtered['plate'].map(plate_model_map)
         
-        # Adicionar tipo de veículo (baseado na placa)
+        # Adicionar tipo de veículo
         df_filtered['vehicle_type'] = df_filtered['plate'].apply(classify_vehicle_type)
         
         # Adicionar consumo esperado
         df_filtered['expected_consumption'] = df_filtered['plate'].apply(get_expected_consumption)
         
-        # Usar o campo km_litro que já vem calculado, ou calcular se não existir
+        # Lógica de eficiência (Mantida)
         if 'km_litro' in df_filtered.columns:
             df_filtered['fuel_efficiency'] = df_filtered['km_litro']
         else:
@@ -391,32 +411,38 @@ def load_and_process_data(file_path, top_plates, plate_model_map):
                 np.nan
             )
         
-        # Adicionar classe de eficiência (baseado no consumo esperado)
+        # Adicionar classe de eficiência
         df_filtered['efficiency_class'] = df_filtered.apply(
             lambda row: classify_fuel_efficiency(row['fuel_efficiency'], row['expected_consumption']),
             axis=1
         )
         
-        
-        # Adicionar dia do mês usando endTime (novo campo)
+        # Adicionar dia do mês (Ajustado para datetime já convertido no parquet)
         if 'endTime' in df_filtered.columns:
-            df_filtered['day_of_month'] = pd.to_datetime(df_filtered['endTime'], errors='coerce').dt.day
+            # Como salvamos em parquet, as datas já devem estar como datetime.
+            # Mas por segurança, garantimos a conversão se necessário.
+            if not pd.api.types.is_datetime64_any_dtype(df_filtered['endTime']):
+                df_filtered['endTime'] = pd.to_datetime(df_filtered['endTime'], errors='coerce')
+            df_filtered['day_of_month'] = df_filtered['endTime'].dt.day
         elif 'positionDate' in df_filtered.columns:
-            df_filtered['day_of_month'] = pd.to_datetime(df_filtered['positionDate'], errors='coerce').dt.day
+             if not pd.api.types.is_datetime64_any_dtype(df_filtered['positionDate']):
+                df_filtered['positionDate'] = pd.to_datetime(df_filtered['positionDate'], errors='coerce')
+             df_filtered['day_of_month'] = df_filtered['positionDate'].dt.day
         else:
-            df_filtered['day_of_month'] = 1  # fallback
+            df_filtered['day_of_month'] = 1 
         
-        # Adicionar evento dominante usando as colunas de eventos agregados
+        # Adicionar evento dominante
         df_filtered['dominant_event'] = df_filtered.apply(identify_dominant_event_from_columns, axis=1)
         
-        # Adicionar flag se o percurso tem eventos
+        # Adicionar flag percurso
         if 'percurso_com_evento' not in df_filtered.columns:
             event_columns = [col for col in df_filtered.columns if col.startswith('event_')]
             df_filtered['percurso_com_evento'] = (df_filtered[event_columns].sum(axis=1) > 0).astype(int)
         
         return df_filtered, df_bruto
+
     except Exception as e:
-        st.error(f"Erro ao carregar o arquivo: {e}")
+        st.error(f"Erro ao ler os dados locais: {e}")
         return None, None
 
 
@@ -776,11 +802,18 @@ def create_tsne_plot(tsne_df, color_by='Eficiência de Combustível (km/L)', sho
 # Funções antigas removidas - agora usamos create_tsne_plot() simplificada
 
 
-# Carregar dados
-file_path = os.path.join(data_base_path, file_options[selected_dataset])
+# # Carregar dados
+# file_path = os.path.join(data_base_path, file_options[selected_dataset])
 
-with st.spinner('Carregando dados...'):
-    df_all, df_bruto = load_and_process_data(file_path, top_10_plates, plate_to_model)
+# with st.spinner('Carregando dados...'):
+#     df_all, df_bruto = load_and_process_data(file_path, top_10_plates, plate_to_model)
+
+# Recupera o nome da pasta
+selected_dataset_folder = file_options[selected_dataset]
+
+# Carrega os dados (agora a mensagem é diferente)
+with st.spinner('Carregando dados otimizados...'):
+    df_all, df_bruto = load_and_process_data(selected_dataset_folder, top_10_plates, plate_to_model)
 
 if df_all is not None:
     # Aplicar filtros
