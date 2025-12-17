@@ -137,11 +137,7 @@ Ao passar o mouse sobre qualquer ponto, você verá:
 ```
 SmartDrive_Streamlit/
 ├── data/
-│   └── deltas/
-│       ├── delta_1_*.txt
-│       └── ...
-│   └── deltas_events/
-│       ├── delta_event_1_*.txt
+│   ├── Delta_Events_BRF_Primaria.txt
 │       └── ...
 ├── src/
 │   └── streamlit_tsne_app.py
